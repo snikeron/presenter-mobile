@@ -4,6 +4,7 @@ import { resolve } from 'path'
 
 export default defineConfig({
   plugins: [svelte()],
+  base: './',
   resolve: {
     alias: {
       $shared: resolve(__dirname, 'shared')
@@ -13,7 +14,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
-        display: resolve(__dirname, 'display.html')
+        display: resolve(__dirname, 'display.html'),
+        host: resolve(__dirname, 'host.html'),
       }
     }
   },

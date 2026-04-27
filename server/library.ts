@@ -3,13 +3,21 @@ import { join, extname, basename } from 'path'
 import { parseSong } from './lyrics.js'
 import type { Song } from '../shared/types.js'
 
-const LYRICS_DIR = process.env.LYRICS_DIR ?? join(process.cwd(), 'lyrics')
-
+let lyricsDir = process.env.LYRICS_DIR ?? join(process.cwd(), 'lyrics')
 let cache: Song[] | null = null
+
+export function setLyricsDir(dir: string) {
+  lyricsDir = dir
+  cache = null
+}
+
+export function getLyricsDir(): string {
+  return lyricsDir
+}
 
 export async function loadLibrary(forceReload = false): Promise<Song[]> {
   if (cache && !forceReload) return cache
-  cache = await scanDir(LYRICS_DIR)
+  cache = await scanDir(lyricsDir)
   return cache
 }
 
@@ -43,8 +51,4 @@ async function scanDir(dir: string): Promise<Song[]> {
   }
 
   return songs.sort((a, b) => a.title.localeCompare(b.title))
-}
-
-export function getLyricsDir(): string {
-  return LYRICS_DIR
 }

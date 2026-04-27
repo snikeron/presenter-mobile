@@ -189,7 +189,7 @@
   }
 
   .slide-preview {
-    background: #0a0a12;
+    background: #090909;
     border-radius: var(--radius);
     border: 1px solid var(--border);
     min-height: 130px;
@@ -203,10 +203,11 @@
     padding: 20px 16px;
     transition: background 0.3s;
     box-sizing: border-box;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.5);
   }
 
   .slide-preview.blank {
-    background: #111;
+    background: #0e0e0e;
   }
 
   .slide-preview.blackout {
@@ -318,14 +319,16 @@
 
   .toggle-btn.active {
     background: var(--primary-dim);
-    border-color: rgba(124, 111, 255, 0.5);
+    border-color: rgba(232, 160, 32, 0.4);
     color: var(--primary);
+    box-shadow: 0 0 12px var(--primary-glow);
   }
 
   .toggle-btn.danger.active {
-    background: rgba(255, 107, 107, 0.15);
-    border-color: rgba(255, 107, 107, 0.5);
+    background: rgba(224, 79, 79, 0.12);
+    border-color: rgba(224, 79, 79, 0.45);
     color: var(--danger);
+    box-shadow: 0 0 12px rgba(224, 79, 79, 0.2);
   }
 
   .quick-jump {
@@ -389,7 +392,8 @@
 
   .qj-slide.active {
     background: var(--primary-dim);
-    border-color: rgba(124, 111, 255, 0.4);
-    color: #c4bbff;
+    border-color: rgba(232, 160, 32, 0.35);
+    color: var(--primary);
+    box-shadow: inset 3px 0 0 var(--primary);
   }
 </style>

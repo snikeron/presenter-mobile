@@ -1,5 +1,8 @@
+import { EventEmitter } from 'events'
 import type { WebSocket } from 'ws'
 import type { PresentationState, ClientMessage, ServerMessage, Song } from '../shared/types.js'
+
+export const wsEvents = new EventEmitter()
 
 const clients = new Set<WebSocket>()
 
@@ -17,13 +20,21 @@ export function setLibrary(songs: Song[]) {
   library = songs
 }
 
+export function getConnectionCount(): number {
+  return clients.size
+}
+
 export function registerClient(ws: WebSocket) {
   clients.add(ws)
+  wsEvents.emit('connection-count', clients.size)
 
-  // Send full initial state immediately
   send(ws, { type: 'init', state: { ...state }, library })
 
-  ws.on('close', () => clients.delete(ws))
+  ws.on('close', () => {
+    clients.delete(ws)
+    wsEvents.emit('connection-count', clients.size)
+  })
+
   ws.on('message', (data) => {
     try {
       const msg: ClientMessage = JSON.parse(data.toString())
@@ -83,7 +94,6 @@ function handleMessage(msg: ClientMessage) {
       break
     }
     case 'library:reload': {
-      // Handled at the server level — triggers a library rescan and broadcasts
       broadcast({ type: 'library', songs: library })
       return
     }

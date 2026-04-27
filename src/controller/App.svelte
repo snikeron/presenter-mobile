@@ -97,8 +97,8 @@
     width: 100%;
     height: 100%;
     overflow-x: hidden;
-    background: #0d0d14;
-    color: #e8e8ff;
+    background: var(--bg);
+    color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     overscroll-behavior: none;
@@ -128,21 +128,24 @@
   }
 
   :global(:root) {
-    --bg: #0d0d14;
-    --surface: #16162a;
-    --surface-2: #1e1e38;
-    --border: rgba(120, 120, 200, 0.15);
-    --primary: #7c6fff;
-    --primary-dim: rgba(124, 111, 255, 0.15);
-    --text: #e8e8ff;
-    --text-dim: #6666aa;
-    --danger: #ff6b6b;
-    --warn: #ffd43b;
-    --green: #51cf66;
+    --bg: #0c0c0d;
+    --surface: #161618;
+    --surface-2: #1e1e22;
+    --surface-3: #252528;
+    --border: rgba(255, 255, 255, 0.07);
+    --primary: #e8a020;
+    --primary-dim: rgba(232, 160, 32, 0.12);
+    --primary-glow: rgba(232, 160, 32, 0.24);
+    --text: #f0ede8;
+    --text-mid: #94908a;
+    --text-dim: #5c5850;
+    --danger: #e04f4f;
+    --warn: #e8a020;
+    --green: #38b860;
     --tab-h: 64px;
-    --status-h: 44px;
-    --radius: 12px;
-    --radius-sm: 8px;
+    --status-h: 48px;
+    --radius: 10px;
+    --radius-sm: 7px;
   }
 
   .app {
@@ -162,31 +165,32 @@
     justify-content: space-between;
     padding: 0 16px;
     height: var(--status-h);
-    background: var(--surface);
+    background: linear-gradient(to bottom, var(--surface-2), var(--surface));
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
   }
 
   .app-name {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     font-weight: 700;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.08em;
     color: var(--primary);
     text-transform: uppercase;
   }
 
   .connection-badge {
-    font-size: 0.72rem;
-    font-weight: 600;
+    font-size: 0.68rem;
+    font-weight: 700;
     padding: 3px 10px;
     border-radius: 999px;
-    background: rgba(255, 107, 107, 0.2);
+    background: rgba(224, 79, 79, 0.15);
     color: var(--danger);
+    letter-spacing: 0.03em;
     transition: all 0.3s;
   }
 
   .connection-badge.connected {
-    background: rgba(81, 207, 102, 0.2);
+    background: rgba(56, 184, 96, 0.15);
     color: var(--green);
   }
 
@@ -202,7 +206,7 @@
   .tab-bar {
     display: flex;
     height: var(--tab-h);
-    background: var(--surface);
+    background: linear-gradient(to bottom, var(--surface), var(--surface-2));
     border-top: 1px solid var(--border);
     flex-shrink: 0;
     padding-bottom: env(safe-area-inset-bottom, 0);
@@ -222,6 +226,19 @@
 
   .tab.active {
     color: var(--primary);
+  }
+
+  .tab.active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 28px;
+    height: 2px;
+    background: var(--primary);
+    border-radius: 0 0 3px 3px;
+    box-shadow: 0 0 8px var(--primary-glow);
   }
 
   .tab svg {
@@ -249,9 +266,9 @@
     height: 17px;
     border-radius: 999px;
     background: var(--primary);
-    color: #fff;
+    color: #000;
     font-size: 0.6rem;
-    font-weight: 700;
+    font-weight: 800;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -260,6 +277,7 @@
 
   .badge.danger {
     background: var(--danger);
+    color: #fff;
     font-size: 0.55rem;
   }
 

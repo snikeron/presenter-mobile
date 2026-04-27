@@ -234,12 +234,13 @@
   }
 
   .slide:active {
-    background: rgba(124, 111, 255, 0.15);
+    background: var(--primary-dim);
   }
 
   .slide.active {
     background: var(--primary-dim);
-    border-color: rgba(124, 111, 255, 0.4);
+    border-color: rgba(232, 160, 32, 0.35);
+    box-shadow: inset 3px 0 0 var(--primary);
   }
 
   .line {
@@ -253,7 +254,7 @@
   }
 
   .slide.active .line {
-    color: #c4bbff;
+    color: var(--primary);
   }
 
   .live-dot {

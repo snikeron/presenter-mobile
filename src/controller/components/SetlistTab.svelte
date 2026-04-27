@@ -147,7 +147,8 @@
   }
 
   .song-item.current {
-    border-color: var(--primary);
+    border-color: rgba(232, 160, 32, 0.3);
+    box-shadow: inset 3px 0 0 var(--primary);
   }
 
   .song-row {
@@ -207,11 +208,17 @@
     font-size: 0.6rem;
     font-weight: 800;
     letter-spacing: 0.08em;
-    color: var(--primary);
-    background: var(--primary-dim);
+    color: #000;
+    background: var(--primary);
     padding: 2px 7px;
     border-radius: 999px;
     text-transform: uppercase;
+    animation: live-glow 2s ease-in-out infinite;
+  }
+
+  @keyframes live-glow {
+    0%, 100% { box-shadow: 0 0 0 0 transparent; }
+    50% { box-shadow: 0 0 8px var(--primary-glow); }
   }
 
   .chevron {
