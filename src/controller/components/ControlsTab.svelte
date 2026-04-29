@@ -5,16 +5,22 @@
   const currentSong = $derived(appState.currentSong)
   const currentSlide = $derived(appState.currentSlide)
 
-  const currentSlideIndex = $derived(
-    currentSong?.allSlides.findIndex(s => s.id === appState.presentation.currentSlideId) ?? -1
+  const currentSetlistIndex = $derived(
+    appState.setlistSongs.findIndex(s => s.id === appState.presentation.currentSongId)
   )
-  const totalSlides = $derived(currentSong?.allSlides.length ?? 0)
+  const totalSetlistSongs = $derived(appState.setlistSongs.length)
 
-  const canPrev = $derived(currentSlideIndex > 0)
-  const canNext = $derived(currentSlideIndex < totalSlides - 1)
+  const canPrev = $derived(currentSetlistIndex > 0)
+  const canNext = $derived(currentSetlistIndex < totalSetlistSongs - 1)
 
-  function prev() { send({ type: 'prev' }) }
-  function next() { send({ type: 'next' }) }
+  function prev() {
+    const song = appState.setlistSongs[currentSetlistIndex - 1]
+    if (song) send({ type: 'display', songId: song.id, slideId: song.allSlides[0]?.id })
+  }
+  function next() {
+    const song = appState.setlistSongs[currentSetlistIndex + 1]
+    if (song) send({ type: 'display', songId: song.id, slideId: song.allSlides[0]?.id })
+  }
   function toggleBlank() { send({ type: 'blank', value: !appState.presentation.isBlank }) }
   function toggleBlackout() { send({ type: 'blackout', value: !appState.presentation.isBlackout }) }
 </script>
@@ -39,7 +45,14 @@
     {#if appState.presentation.isBlackout}
       <span class="overlay-label blackout-label">BLACKOUT</span>
     {:else if appState.presentation.isBlank}
-      <span class="overlay-label blank-label">BLANK</span>
+      {#if currentSlide}
+        {#each currentSlide.lines as line}
+          <span class="preview-line blank-dim">{line}</span>
+        {/each}
+      {/if}
+      <div class="blank-overlay">
+        <span class="overlay-label blank-label">BLANK</span>
+      </div>
     {:else if currentSlide}
       {#each currentSlide.lines as line}
         <span class="preview-line">{line}</span>
@@ -49,8 +62,8 @@
     {/if}
   </div>
 
-  <!-- Slide navigation -->
-  {#if currentSong}
+  <!-- Song navigation (setlist) -->
+  {#if totalSetlistSongs > 0}
     <div class="nav-bar">
       <button
         class="nav-btn"
@@ -65,7 +78,7 @@
       </button>
 
       <span class="slide-counter">
-        {currentSlideIndex >= 0 ? currentSlideIndex + 1 : '—'} / {totalSlides}
+        {currentSetlistIndex >= 0 ? currentSetlistIndex + 1 : '—'} / {totalSetlistSongs}
       </span>
 
       <button
@@ -96,16 +109,7 @@
       <span>{appState.presentation.isBlank ? 'Show Lyrics' : 'Blank Screen'}</span>
     </button>
 
-    <button
-      class="toggle-btn danger"
-      class:active={appState.presentation.isBlackout}
-      onclick={toggleBlackout}
-    >
-      <svg viewBox="0 0 24 24" fill="currentColor">
-        <rect width="24" height="24" rx="2" />
-      </svg>
-      <span>{appState.presentation.isBlackout ? 'Restore' : 'Blackout'}</span>
-    </button>
+    <button class="toggle-btn" disabled></button>
   </div>
 
   <!-- All slides for current song (quick jump) -->
@@ -189,6 +193,7 @@
   }
 
   .slide-preview {
+    position: relative;
     background: #090909;
     border-radius: var(--radius);
     border: 1px solid var(--border);
@@ -236,6 +241,17 @@
     font-weight: 800;
     letter-spacing: 0.12em;
     text-transform: uppercase;
+  }
+
+  .blank-dim { opacity: 0.13; }
+
+  .blank-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
   }
 
   .blank-label { color: var(--text-dim); }
@@ -330,6 +346,8 @@
     color: var(--danger);
     box-shadow: 0 0 12px rgba(224, 79, 79, 0.2);
   }
+
+  .toggle-btn:disabled { opacity: 0.18; cursor: default; pointer-events: none; }
 
   .quick-jump {
     display: flex;

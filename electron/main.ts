@@ -54,6 +54,7 @@ async function ensureLyricsDir(dir: string): Promise<void> {
 let hostWindow: BrowserWindow | null = null
 let displayWindow: BrowserWindow | null = null
 let changeLyricsDir: ((dir: string) => Promise<number>) | null = null
+let closeServer: (() => Promise<void>) | null = null
 let activePort = 80
 let activeLocalIp: string | null = null
 
@@ -68,9 +69,10 @@ function getAppIcon() {
 function createHostWindow() {
   const icon = getAppIcon()
   hostWindow = new BrowserWindow({
-    width: 440,
-    height: 700,
-    resizable: false,
+    width: 900,
+    height: 680,
+    minWidth: 420,
+    minHeight: 560,
     title: 'PraisePresenter',
     backgroundColor: '#0d0d14',
     ...(icon ? { icon } : {}),
@@ -82,7 +84,12 @@ function createHostWindow() {
   })
   hostWindow.setMenuBarVisibility(false)
   hostWindow.loadFile(join(DIST, 'host.html'))
-  hostWindow.on('closed', () => { hostWindow = null })
+  // Host window is the app's primary window — closing it quits the whole app,
+  // even if a hidden display window still exists as a BrowserWindow object.
+  hostWindow.on('closed', () => {
+    hostWindow = null
+    app.quit()
+  })
 
   // Ctrl+Shift+I opens DevTools in any build — remove after debugging
   hostWindow.webContents.on('before-input-event', (_e, input) => {
@@ -133,6 +140,7 @@ app.whenReady().then(async () => {
   activePort = result.port
   activeLocalIp = result.localIp
   changeLyricsDir = result.changeLyricsDir
+  closeServer = result.close
 
   wsEvents.on('connection-count', (count: number) => {
     hostWindow?.webContents.send('connection-count', count)
@@ -148,6 +156,16 @@ app.whenReady().then(async () => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
+})
+
+let _quitting = false
+app.on('will-quit', (event) => {
+  if (_quitting) return
+  _quitting = true
+  if (closeServer) {
+    event.preventDefault()
+    closeServer().finally(() => app.quit())
+  }
 })
 
 app.on('activate', () => {

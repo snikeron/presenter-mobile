@@ -4,7 +4,7 @@ import mDNS from 'multicast-dns'
 
 const HOSTNAME = 'praise.local'
 
-export function startMdns(port: number): string | null {
+export function startMdns(port: number): { localIp: string | null; destroy: () => void } {
   const ip = getLocalIpv4()
 
   // Bind to the specific LAN interface so multicast packets go out on the right
@@ -35,7 +35,7 @@ export function startMdns(port: number): string | null {
     // non-fatal — direct IP / QR code access still works
   })
 
-  return ip
+  return { localIp: ip, destroy: () => mdns.destroy() }
 }
 
 export function getLocalIpv4(): string | null {

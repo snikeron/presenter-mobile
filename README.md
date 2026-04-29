@@ -1,31 +1,42 @@
 # PraisePresenter
 
-A modern worship lyrics presentation system. Run it on your laptop, control it from your phone.
+A modern worship lyrics presentation system. Run it on your laptop, control it from any phone on the network — or directly from the host machine itself.
 
 ## Features
 
-- **Mobile controller** — browse your song library, build a setlist, and control what's on screen from any phone on the same network
+- **Desktop host app** — a responsive Electron app showing the QR code, server status, connected controllers, and full song library / setlist / display controls
+- **Mobile controller** — browse your song library, build a setlist, and control what's on screen from any phone or tablet on the same network
 - **Projection display** — full-screen, clean white text on black, with smooth crossfade transitions between slides
-- **Zero-config networking** — connect your phone by scanning the QR code shown at startup, or navigate to `http://praise.local`
-- **Presenter format** — reads standard Presenter 5 `.txt` song files (title, artist, verse/bridge/coda sections, copyright, CCLI)
+- **Zero-config networking** — connect by scanning the QR code, or navigate to `http://praise.local`
+- **Presenter format** — reads standard Presenter 5 `.txt` song files (title, artist, verse/chorus/bridge sections, copyright, CCLI)
 - **Real-time sync** — WebSocket-based; all controllers and the display stay in sync instantly
 
-## Quick Start
+## Quick Start (Electron — recommended)
+
+Download the portable `PraisePresenter.exe` from the [Releases](../../releases) page and run it. No installation required.
+
+On first launch it will:
+1. Start the built-in server and display the QR code
+2. Open a full-screen projection display on a second monitor if one is connected
+3. Copy the bundled sample songs into your user data folder
+
+Scan the QR code on a phone (same WiFi) to open the mobile controller, or use the Library / Setlist / Display tabs in the host app directly.
+
+### Changing the lyrics folder
+
+Click **Change…** next to the folder path in the host app to point PraisePresenter at any folder on disk. The library reloads immediately without restarting.
+
+## Quick Start (server-only / headless)
 
 ```bash
-# Install dependencies
 npm install
-
-# Build the frontend
 npm run build
-
-# Start the server (runs on port 80 by default)
-npm start
+npm start          # runs on port 80 by default
 ```
 
-Open `http://localhost/display` in the browser you'll use for projection. On your phone (same WiFi), scan the QR code shown in the terminal or navigate to `http://praise.local`.
+Open `http://localhost/display` in your projection browser. On a phone (same WiFi), scan the QR code shown in the terminal or navigate to `http://praise.local`.
 
-> **Port 80 requires admin/elevated privileges on Windows.** Run your terminal as Administrator, or set `PORT=8080` to use a non-privileged port.
+> **Port 80 requires admin/elevated privileges on Windows.** Run as Administrator, or set `PORT=8080`.
 
 ## Development
 
@@ -33,11 +44,24 @@ Open `http://localhost/display` in the browser you'll use for projection. On you
 npm run dev
 ```
 
-Vite dev server runs on `:5173` (frontend hot-reload), backend API + WebSocket on `:3000`. Both are proxied automatically.
+Vite dev server on `:5173` (frontend hot-reload), Fastify API + WebSocket on `:3000`. Both are proxied automatically.
+
+## Building the Electron app
+
+```bash
+npm run electron:build:win    # Windows portable .exe
+npm run electron:build:mac    # macOS .dmg
+npm run electron:build:linux  # Linux AppImage
+```
+
+> **Tip (Windows):** Add `release\` to Windows Defender's exclusion list before building to avoid the antivirus locking the output file mid-write:
+> ```powershell
+> Add-MpPreference -ExclusionPath "C:\path\to\presenter-mobile\release"
+> ```
 
 ## Adding Songs
 
-Drop Presenter 5 `.txt` files into the `lyrics/` folder:
+Drop Presenter 5 `.txt` files into your lyrics folder:
 
 ```
 Song Title
@@ -49,7 +73,7 @@ Artist Name
 First line of verse one
 Second line of verse one
 
-Third line (new slide if verse 1 needs to be split)
+Third line (new slide)
 
 .0
 Chorus line one
@@ -75,35 +99,46 @@ Tap the **↺ reload** button in the Library tab to pick up new files without re
 
 ## URLs
 
-| URL                           | Purpose                                    |
-| ----------------------------- | ------------------------------------------ |
-| `http://praise.local`         | Mobile controller                          |
-| `http://praise.local/display` | Projection display                         |
-| `http://localhost/display`    | Projection display (on the host machine)   |
-| `http://<LAN-IP>`             | Direct IP fallback if mDNS doesn't resolve |
+| URL                            | Purpose                                     |
+| ------------------------------ | ------------------------------------------- |
+| `http://praise.local`          | Mobile controller                           |
+| `http://praise.local/display`  | Projection display                          |
+| `http://localhost/display`     | Projection display (local browser)          |
+| `http://<LAN-IP>`              | Direct IP fallback if mDNS doesn't resolve  |
+| `http://localhost/api/library` | Song library JSON                           |
+| `http://localhost/api/clients` | Connected controllers JSON                  |
+| `http://localhost/api/status`  | Server status JSON                          |
 
 ## Architecture
 
 ```
 presenter-mobile/
-├── server/          # Fastify backend (API + WebSocket + mDNS)
-│   ├── index.ts     # Server entry point
-│   ├── lyrics.ts    # Presenter .txt parser
-│   ├── library.ts   # Song library (scans lyrics/)
-│   ├── websocket.ts # Real-time state sync
-│   ├── mdns.ts      # praise.local advertisement
-│   └── cli.ts       # Startup output formatting
+├── electron/
+│   ├── main.ts       # Electron main process (windows, IPC, server lifecycle)
+│   └── preload.ts    # contextBridge API exposed to host panel renderer
+├── server/
+│   ├── app.ts        # Fastify setup (REST API, WebSocket, static serving)
+│   ├── index.ts      # CLI entry point (headless / dev mode)
+│   ├── lyrics.ts     # Presenter .txt parser
+│   ├── library.ts    # Song library (scans lyrics folder, caches)
+│   ├── websocket.ts  # Real-time state sync + connected client tracking
+│   ├── mdns.ts       # praise.local mDNS advertisement
+│   └── cli.ts        # Terminal output formatting
 ├── src/
-│   ├── controller/  # Mobile controller (Svelte 5)
-│   └── display/     # Projection display (Svelte 5)
+│   ├── controller/   # Mobile controller UI (Svelte 5)
+│   ├── display/      # Projection display UI (Svelte 5)
+│   └── host/         # Electron host panel UI (Svelte 5, responsive)
 ├── shared/
-│   └── types.ts     # Shared TypeScript types
-└── lyrics/          # Song library (.txt files)
+│   └── types.ts      # Shared TypeScript types (Song, Slide, messages)
+├── scripts/
+│   ├── build-electron.mjs   # esbuild: bundles main + preload to CJS
+│   └── generate-icons.mjs   # SVG → PNG / ICO / ICNS icon pipeline
+└── lyrics/           # Bundled sample songs (.txt)
 ```
 
-**Stack:** Fastify · Svelte 5 · Vite 6 · TypeScript · WebSockets · multicast-dns · tsx
+**Stack:** Electron · Fastify · Svelte 5 · Vite 6 · TypeScript · WebSockets · multicast-dns · esbuild · electron-builder
 
-## Environment Variables
+## Environment Variables (server-only / headless mode)
 
 | Variable     | Default        | Description                       |
 | ------------ | -------------- | --------------------------------- |

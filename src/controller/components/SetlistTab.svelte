@@ -5,7 +5,6 @@
 
   let expandedId = $state<string | null>(null)
 
-  // Auto-expand the currently playing song
   $effect(() => {
     const id = appState.presentation.currentSongId
     if (id && appState.presentation.setlist.includes(id)) {
@@ -52,31 +51,41 @@
       {#each appState.setlistSongs as song, idx (song.id)}
         {@const isCurrent = appState.presentation.currentSongId === song.id}
         <div class="song-item" class:current={isCurrent}>
-          <!-- Row header -->
-          <button class="song-row" onclick={() => toggle(song.id)}>
-            <span class="index">{idx + 1}</span>
-            <div class="song-info">
-              <span class="title">{song.title}</span>
-              {#if song.artist}
-                <span class="artist">{song.artist}</span>
-              {/if}
-            </div>
-            <div class="row-end">
-              {#if isCurrent}
-                <span class="live-badge">LIVE</span>
-              {/if}
-              <svg
-                class="chevron"
-                class:open={expandedId === song.id}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <polyline points="6 9 12 15 18 9" />
+          <div class="song-row" class:expanded={expandedId === song.id}>
+            <button class="song-toggle" onclick={() => toggle(song.id)}>
+              <span class="index">{idx + 1}</span>
+              <div class="song-info">
+                <span class="title">{song.title}</span>
+                {#if song.artist}
+                  <span class="artist">{song.artist}</span>
+                {/if}
+              </div>
+              <div class="row-end">
+                {#if isCurrent}
+                  <span class="live-badge">LIVE</span>
+                {/if}
+                <svg
+                  class="chevron"
+                  class:open={expandedId === song.id}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </div>
+            </button>
+            <button
+              class="add-btn in-setlist"
+              onclick={() => send({ type: 'setlist:remove', songId: song.id })}
+              title="Remove from setlist"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
               </svg>
-            </div>
-          </button>
+            </button>
+          </div>
 
           {#if expandedId === song.id}
             <div class="expanded-panel">
@@ -93,7 +102,8 @@
   .setlist {
     display: flex;
     flex-direction: column;
-    height: 100%;
+    flex: 1;
+    min-height: 0;
     overflow: hidden;
   }
 
@@ -129,6 +139,7 @@
 
   .list {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
     padding: 10px 12px;
@@ -140,7 +151,6 @@
 
   .song-item {
     border-radius: var(--radius);
-    overflow: hidden;
     background: var(--surface);
     border: 1px solid var(--border);
     transition: border-color 0.2s;
@@ -154,14 +164,31 @@
   .song-row {
     display: flex;
     align-items: center;
+    border-radius: var(--radius);
+  }
+
+  .song-row.expanded {
+    background: var(--surface-2);
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+
+  .song-toggle {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
     gap: 10px;
     padding: 12px 14px;
     text-align: left;
-    width: 100%;
+    border-radius: var(--radius);
   }
 
-  .song-row:active {
+  .song-toggle:active {
     background: var(--surface-2);
+  }
+
+  .song-row.expanded .song-toggle {
+    border-radius: var(--radius) 0 0 0;
   }
 
   .index {
@@ -173,7 +200,7 @@
     flex-shrink: 0;
   }
 
-  .song-info {
+.song-info {
     flex: 1;
     min-width: 0;
   }
@@ -232,10 +259,42 @@
     transform: rotate(180deg);
   }
 
+  .add-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--surface-2);
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-right: 12px;
+    transition: all 0.15s;
+  }
+
+  .add-btn:active {
+    transform: scale(0.9);
+  }
+
+  .add-btn.in-setlist {
+    background: var(--primary-dim);
+    color: var(--primary);
+  }
+
+  .add-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+
   .expanded-panel {
     border-top: 1px solid var(--border);
     padding: 10px;
     background: var(--bg);
+    border-radius: 0 0 var(--radius) var(--radius);
+    max-height: 400px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .empty-state {

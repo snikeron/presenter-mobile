@@ -4,7 +4,25 @@ import type { PresentationState, ClientMessage, ServerMessage, Song } from '../s
 
 export const wsEvents = new EventEmitter()
 
-const clients = new Set<WebSocket>()
+export interface ClientInfo {
+  ip: string
+  device: string
+  connectedAt: string
+}
+
+function parseDevice(ua: string): string {
+  if (/iPhone/i.test(ua)) return 'iPhone'
+  if (/iPad/i.test(ua)) return 'iPad'
+  if (/Android/i.test(ua)) return /[Tt]ablet|SM-T/.test(ua) ? 'Android Tablet' : 'Android'
+  if (/Windows Phone/i.test(ua)) return 'Windows Phone'
+  if (/Windows/i.test(ua)) return 'Windows'
+  if (/Macintosh/i.test(ua)) return 'Mac'
+  if (/Linux/i.test(ua)) return 'Linux'
+  if (/CrOS/i.test(ua)) return 'Chromebook'
+  return 'Device'
+}
+
+const clients = new Map<WebSocket, ClientInfo>()
 
 export const state: PresentationState = {
   setlist: [],
@@ -24,8 +42,20 @@ export function getConnectionCount(): number {
   return clients.size
 }
 
-export function registerClient(ws: WebSocket) {
-  clients.add(ws)
+function isLoopback(ip: string): boolean {
+  return ip === '127.0.0.1' || ip === '::1' || ip.startsWith('::ffff:127.')
+}
+
+export function getConnectedClients(): ClientInfo[] {
+  return Array.from(clients.values()).filter(c => !isLoopback(c.ip))
+}
+
+export function registerClient(ws: WebSocket, meta: { ip: string; userAgent: string }) {
+  clients.set(ws, {
+    ip: meta.ip,
+    device: parseDevice(meta.userAgent),
+    connectedAt: new Date().toISOString(),
+  })
   wsEvents.emit('connection-count', clients.size)
 
   send(ws, { type: 'init', state: { ...state }, library })
@@ -50,7 +80,6 @@ function handleMessage(msg: ClientMessage) {
     case 'display': {
       state.currentSongId = msg.songId
       state.currentSlideId = msg.slideId
-      state.isBlank = false
       break
     }
     case 'blank': {
@@ -114,13 +143,12 @@ function navigateSlide(delta: number) {
   const next = idx + delta
   if (next >= 0 && next < song.allSlides.length) {
     state.currentSlideId = song.allSlides[next].id
-    state.isBlank = false
   }
 }
 
 function broadcast(msg: ServerMessage) {
   const data = JSON.stringify(msg)
-  for (const ws of clients) {
+  for (const ws of clients.keys()) {
     if (ws.readyState === 1 /* OPEN */) {
       ws.send(data)
     }

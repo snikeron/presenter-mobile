@@ -5,7 +5,7 @@ import fastifyCors from '@fastify/cors'
 import { resolve, extname } from 'path'
 import { readFile } from 'fs/promises'
 import { loadLibrary, getLyricsDir, invalidateCache, setLyricsDir } from './library.js'
-import { registerClient, setLibrary, broadcastLibrary, getConnectionCount } from './websocket.js'
+import { registerClient, setLibrary, broadcastLibrary, getConnectionCount, getConnectedClients } from './websocket.js'
 import { startMdns } from './mdns.js'
 import { warnPortFallback } from './cli.js'
 
@@ -20,8 +20,8 @@ export interface ServerConfig {
 export interface ServerResult {
   port: number
   localIp: string | null
-  /** Call this to hot-swap the lyrics folder at runtime */
   changeLyricsDir: (dir: string) => Promise<number>
+  close: () => Promise<void>
 }
 
 export async function startServer(config: ServerConfig): Promise<ServerResult> {
@@ -56,10 +56,15 @@ export async function startServer(config: ServerConfig): Promise<ServerResult> {
     connectionCount: getConnectionCount(),
   }))
 
+  fastify.get('/api/clients', async () => getConnectedClients())
+
   // ── WebSocket ───────────────────────────────────────────────────────────────
 
-  fastify.get('/ws', { websocket: true }, (socket) => {
-    registerClient(socket as any)
+  fastify.get('/ws', { websocket: true }, (socket, request) => {
+    registerClient(socket as any, {
+      ip: request.ip,
+      userAgent: (request.headers['user-agent'] as string) || '',
+    })
   })
 
   // ── Static / SPA ────────────────────────────────────────────────────────────
@@ -147,7 +152,7 @@ export async function startServer(config: ServerConfig): Promise<ServerResult> {
     }
   }
 
-  const localIp = startMdns(activePort)
+  const { localIp, destroy: destroyMdns } = startMdns(activePort)
 
   async function changeLyricsDir(dir: string): Promise<number> {
     setLyricsDir(dir)
@@ -157,5 +162,10 @@ export async function startServer(config: ServerConfig): Promise<ServerResult> {
     return songs.length
   }
 
-  return { port: activePort, localIp, changeLyricsDir }
+  async function close(): Promise<void> {
+    destroyMdns()
+    await fastify.close()
+  }
+
+  return { port: activePort, localIp, changeLyricsDir, close }
 }
