@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+# Needed so the release job can create/update GitHub Releases and tags
+permissions:
+  contents: write
+
+jobs:
+  # ── Per-platform builds ────────────────────────────────────────────────────
+  build:
+    strategy:
+      fail-fast: false   # let all three finish even if one fails
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win
+            artifact-glob: release/*.exe
+          - os: macos-latest
+            platform: mac
+            artifact-glob: release/*.dmg
+          - os: ubuntu-latest
+            platform: linux
+            artifact-glob: release/*.AppImage
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run electron:build:${{ matrix.platform }}
+        env:
+          # Suppress macOS code-signing; remove once signing certs are configured
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.platform }}
+          path: ${{ matrix.artifact-glob }}
+          if-no-files-found: error
+          retention-days: 1
+
+  # ── Create / update GitHub Release ────────────────────────────────────────
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version from package.json
+        id: pkg
+        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+          merge-multiple: true
+
+      - name: Create or update release v${{ steps.pkg.outputs.version }}
+        uses: ncipollo/release-action@v1
+        with:
+          tag: v${{ steps.pkg.outputs.version }}
+          name: PraisePresenter v${{ steps.pkg.outputs.version }}
+          commit: ${{ github.sha }}
+          artifacts: dist/*
+          allowUpdates: true      # re-pushing the same version refreshes the artifacts
+          removeArtifacts: true   # replace old artifacts instead of appending
+          makeLatest: true
+          generateReleaseNotes: true
+          token: ${{ secrets.GITHUB_TOKEN }}
