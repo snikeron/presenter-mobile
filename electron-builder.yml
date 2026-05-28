@@ -1,6 +1,10 @@
 appId: com.praisepresenter.app
 productName: PraisePresenter
 
+# Publishing is handled by the release.yml workflow — prevent electron-builder
+# from attempting to upload artifacts itself when it detects a CI environment.
+publish: never
+
 directories:
   output: release
 
