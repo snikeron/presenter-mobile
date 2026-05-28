@@ -12,10 +12,10 @@
     "start": "tsx server/index.ts",
     "preview": "vite preview",
     "electron:dev": "npm run build && node scripts/generate-icons.mjs && node scripts/build-electron.mjs && electron .",
-    "electron:build": "npm run build && node scripts/generate-icons.mjs && node scripts/build-electron.mjs && electron-builder",
-    "electron:build:win": "npm run build && node scripts/generate-icons.mjs && node scripts/build-electron.mjs && electron-builder --win",
-    "electron:build:mac": "npm run build && node scripts/generate-icons.mjs && node scripts/build-electron.mjs && electron-builder --mac",
-    "electron:build:linux": "npm run build && node scripts/generate-icons.mjs && node scripts/build-electron.mjs && electron-builder --linux"
+    "electron:build": "npm run build && node scripts/generate-icons.mjs && node scripts/build-electron.mjs && electron-builder --publish never",
+    "electron:build:win": "npm run build && node scripts/generate-icons.mjs && node scripts/build-electron.mjs && electron-builder --win --publish never",
+    "electron:build:mac": "npm run build && node scripts/generate-icons.mjs && node scripts/build-electron.mjs && electron-builder --mac --publish never",
+    "electron:build:linux": "npm run build && node scripts/generate-icons.mjs && node scripts/build-electron.mjs && electron-builder --linux --publish never"
   },
   "dependencies": {
     "@fastify/cors": "^11.2.0",
