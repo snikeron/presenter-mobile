@@ -57,6 +57,7 @@ let changeLyricsDir: ((dir: string) => Promise<number>) | null = null
 let closeServer: (() => Promise<void>) | null = null
 let activePort = 80
 let activeLocalIp: string | null = null
+let currentDisplayId: number | null = null
 
 function getAppIcon() {
   try {
@@ -99,11 +100,20 @@ function createHostWindow() {
   })
 }
 
-function createDisplayWindow() {
+function createDisplayWindow(displayId?: number) {
   const displays = screen.getAllDisplays()
   const primary = screen.getPrimaryDisplay()
-  const secondary = displays.find(d => d.id !== primary.id)
-  const target = secondary ?? primary
+
+  let target: Electron.Display
+  if (displayId != null) {
+    target = displays.find(d => d.id === displayId) ?? primary
+  } else if (currentDisplayId != null) {
+    target = displays.find(d => d.id === currentDisplayId) ?? displays.find(d => d.id !== primary.id) ?? primary
+  } else {
+    target = displays.find(d => d.id !== primary.id) ?? primary
+  }
+
+  currentDisplayId = target.id
   const icon = getAppIcon()
 
   displayWindow = new BrowserWindow({
@@ -145,6 +155,11 @@ app.whenReady().then(async () => {
   wsEvents.on('connection-count', (count: number) => {
     hostWindow?.webContents.send('connection-count', count)
   })
+
+  const notifyDisplaysChanged = () => hostWindow?.webContents.send('displays-changed')
+  screen.on('display-added', notifyDisplaysChanged)
+  screen.on('display-removed', notifyDisplaysChanged)
+  screen.on('display-metrics-changed', notifyDisplaysChanged)
 
   createHostWindow()
 
@@ -205,7 +220,7 @@ ipcMain.on('show-display', () => {
   if (displayWindow && !displayWindow.isDestroyed()) {
     displayWindow.show()
   } else {
-    createDisplayWindow()
+    createDisplayWindow(currentDisplayId ?? undefined)
   }
 })
 
@@ -213,4 +228,72 @@ ipcMain.on('hide-display', () => {
   if (displayWindow && !displayWindow.isDestroyed()) {
     displayWindow.hide()
   }
+})
+
+ipcMain.handle('get-displays', () => {
+  const displays = screen.getAllDisplays()
+  const primary = screen.getPrimaryDisplay()
+  return displays.map((d, i) => ({
+    id: d.id,
+    label: d.label || `Display ${i + 1}`,
+    isPrimary: d.id === primary.id,
+    isCurrent: d.id === currentDisplayId && displayWindow != null && !displayWindow.isDestroyed(),
+    bounds: d.bounds,
+    scaleFactor: d.scaleFactor,
+  }))
+})
+
+ipcMain.handle('move-display-to', async (_, displayId: number) => {
+  const displays = screen.getAllDisplays()
+  const target = displays.find(d => d.id === displayId)
+  if (!target) return false
+
+  currentDisplayId = displayId
+
+  if (displayWindow && !displayWindow.isDestroyed()) {
+    const wasFullScreen = displayWindow.isFullScreen()
+    if (wasFullScreen) displayWindow.setFullScreen(false)
+    await new Promise<void>(resolve => setTimeout(resolve, wasFullScreen ? 250 : 0))
+    if (displayWindow && !displayWindow.isDestroyed()) {
+      displayWindow.setBounds(target.bounds)
+      if (wasFullScreen) displayWindow.setFullScreen(true)
+    }
+  }
+  return true
+})
+
+ipcMain.handle('identify-displays', () => {
+  const displays = screen.getAllDisplays()
+  const primary = screen.getPrimaryDisplay()
+  const wins: BrowserWindow[] = []
+
+  for (let i = 0; i < displays.length; i++) {
+    const d = displays[i]
+    const num = i + 1
+    const label = d.id === primary.id ? `Display ${num} · Primary` : `Display ${num}`
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>*{margin:0;padding:0}html,body{width:100%;height:100%}body{background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:-apple-system,'Segoe UI',sans-serif;color:#fff;user-select:none}.n{font-size:min(28vw,28vh);font-weight:900;line-height:1;text-shadow:0 0 80px rgba(255,255,255,.15)}.l{font-size:min(2.5vw,2.5vh);opacity:.55;margin-top:.6em;letter-spacing:.04em}</style></head><body><div class="n">${num}</div><div class="l">${label}</div></body></html>`
+
+    const win = new BrowserWindow({
+      x: d.bounds.x,
+      y: d.bounds.y,
+      width: d.bounds.width,
+      height: d.bounds.height,
+      frame: false,
+      alwaysOnTop: true,
+      skipTaskbar: true,
+      focusable: false,
+      backgroundColor: '#000000',
+      webPreferences: { contextIsolation: true, nodeIntegration: false },
+    })
+    win.setMenuBarVisibility(false)
+    win.setIgnoreMouseEvents(true)
+    win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
+    wins.push(win)
+  }
+
+  setTimeout(() => {
+    for (const w of wins) {
+      if (!w.isDestroyed()) w.close()
+    }
+  }, 3000)
 })

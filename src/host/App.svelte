@@ -14,6 +14,7 @@
   let localIp = $state<string | null>(null)
   let lyricsDir = $state('')
   let displayVisible = $state(false)
+  let displays = $state<DisplayInfo[]>([])
   let qrDataUrl = $state('')
   let songCount = $state<number | null>(null)
   let statusMessage = $state('')
@@ -34,6 +35,7 @@
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
   let cleanupCountListener: (() => void) | null = null
+  let cleanupDisplaysListener: (() => void) | null = null
   let pollInterval: ReturnType<typeof setInterval> | null = null
 
   onMount(async () => {
@@ -46,6 +48,11 @@
       lyricsDir = config.lyricsDir
 
       displayVisible = await window.electronAPI.getDisplayVisible()
+      displays = await window.electronAPI.getDisplays()
+
+      cleanupDisplaysListener = window.electronAPI.onDisplaysChanged(async () => {
+        displays = await window.electronAPI.getDisplays()
+      })
 
       connect(info.port)
 
@@ -84,6 +91,7 @@
 
   onDestroy(() => {
     cleanupCountListener?.()
+    cleanupDisplaysListener?.()
     if (pollInterval) clearInterval(pollInterval)
   })
 
@@ -106,6 +114,19 @@
       window.electronAPI.showDisplay()
     }
     displayVisible = !displayVisible
+  }
+
+  async function switchDisplay(displayId: number) {
+    await window.electronAPI.moveDisplayTo(displayId)
+    displays = await window.electronAPI.getDisplays()
+    if (!displayVisible) {
+      window.electronAPI.showDisplay()
+      displayVisible = true
+    }
+  }
+
+  function identifyDisplays() {
+    window.electronAPI.identifyDisplays()
   }
 </script>
 
@@ -155,6 +176,27 @@
     <button class="sb-toggle-btn" onclick={toggleDisplay}>
       {displayVisible ? 'Hide Display Window' : 'Show Display Window'}
     </button>
+
+    {#if displays.length > 1}
+      <div class="sb-screen-row">
+        <span class="sb-key">Screen</span>
+        <div class="sb-disp-btns">
+          {#each displays as d, i}
+            <button
+              class="sb-disp-btn"
+              class:active={d.isCurrent}
+              onclick={() => switchDisplay(d.id)}
+              title={d.label + (d.isPrimary ? ' (Primary)' : '')}
+            >
+              {i + 1}{#if d.isPrimary}<span class="sb-disp-primary">P</span>{/if}
+            </button>
+          {/each}
+        </div>
+        <button class="sb-identify-btn" onclick={identifyDisplays} title="Show display numbers on all screens">
+          Identify
+        </button>
+      </div>
+    {/if}
   </div>
 {/snippet}
 
@@ -714,4 +756,60 @@
     color: var(--green);
     margin: 2px 0 0;
   }
+
+  .sb-screen-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .sb-disp-btns {
+    display: flex;
+    gap: 4px;
+    flex: 1;
+  }
+
+  .sb-disp-btn {
+    min-width: 30px;
+    height: 28px;
+    padding: 0 6px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text-mid);
+    font-size: 0.78rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    transition: all 0.15s;
+  }
+  .sb-disp-btn:hover { background: var(--surface-3); color: var(--text); }
+  .sb-disp-btn.active {
+    background: var(--primary-dim);
+    border-color: rgba(232,160,32,0.4);
+    color: var(--primary);
+    box-shadow: 0 0 8px var(--primary-glow);
+  }
+
+  .sb-disp-primary {
+    font-size: 0.55rem;
+    font-weight: 800;
+    opacity: 0.6;
+    margin-top: 1px;
+  }
+
+  .sb-identify-btn {
+    flex-shrink: 0;
+    padding: 4px 9px;
+    border-radius: 6px;
+    background: var(--surface-2);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: var(--text-mid);
+    font-size: 0.72rem;
+    font-weight: 600;
+    transition: all 0.15s;
+  }
+  .sb-identify-btn:hover { background: var(--surface-3); color: var(--text); }
 </style>
